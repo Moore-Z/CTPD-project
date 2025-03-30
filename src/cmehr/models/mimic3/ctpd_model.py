@@ -706,11 +706,9 @@ class CTPDModule(MIMIC3LightningModule):
                 tgt_mask=mask,              # 因果掩码(类比transformer decoder的mask)
                 tgt_is_causal=True)         # [B,T_ref-1,D]
                 
-            # 投影回原始特征空间
-            pred_text = self.text_proj(pred_text_emb)  # [B,T_ref-1,D_reg]
             
             # 计算文本重构损失
-            text_recon_loss = F.mse_loss(pred_text, text_tgt_embs[:, 1:])
+            text_recon_loss = F.mse_loss(pred_text_emb, text_tgt_embs[:, 1:])
         else:
             # 如果不使用原型，直接使用时间步级特征
             concat_ts_feat = torch.cat(ts_feat_list, dim=1)  # [B,sum(T_i),D]
@@ -766,6 +764,7 @@ class CTPDModule(MIMIC3LightningModule):
             # 表型分类任务(多标签)
             if labels != None:
                 # 训练模式:计算多标签交叉熵损失
+                labels = labels[:, 1:]
                 labels = labels.float()
                 ce_loss = self.loss_fct1(output, labels)
                 loss_dict["ce_loss"] = ce_loss
@@ -838,7 +837,7 @@ if __name__ == "__main__":
     from cmehr.dataset.mimic3_downstream_datamodule import MIMIC3DataModule
 
     datamodule = MIMIC3DataModule(
-        file_path=str(DATA_PATH / "output_mimic3/pheno"),
+        file_path=str("/Users/haochengyang/Desktop/research/CTPD/MMMSPG-014C/EHR_dataset/mimiciii_benchmark/output_mimic3/los"),
         tt_max=24,
         bert_type="prajjwal1/bert-tiny",
         max_length=512
@@ -861,12 +860,14 @@ if __name__ == "__main__":
     label: torch.Size([4])
     """
     model = CTPDModule(
-        task="pheno",
+        period_length=24,
+        task="los",
         use_multiscale=True,
         use_prototype=True,
     )
     loss = model(
         # x_ts, x_ts_mask, ts_tt_list
+
         x_ts=batch["ts"],
         x_ts_mask=batch["ts_mask"],
         ts_tt_list=batch["ts_tt"],

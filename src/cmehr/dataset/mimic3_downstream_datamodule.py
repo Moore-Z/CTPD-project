@@ -294,7 +294,7 @@ class MIMIC3DataModule(LightningDataModule):
 
 if __name__ == "__main__":
     dataset = TSNote_Irg(
-        file_path=str(DATA_PATH / "mimiciii_benchmark/output_mimic3/los"),
+        file_path=str(DATA_PATH / "mimiciii_benchmark/output_mimic3/pheno"),
         split="train",
         bert_type="yikuan8/Clinical-Longformer",
         max_length=1024,
@@ -305,6 +305,7 @@ if __name__ == "__main__":
     print(dataset[5]['reg_ts'].shape)
     print(dataset[6]['reg_ts'].shape)
     print(dataset[7]['reg_ts'].shape)
+    print(dataset[8]['label'].shape)
     # datamodule = MIMIC3DataModule(
     #     file_path=str(DATA_PATH / "mimiciii_benchmark/output_mimic3/pheno"),
     # )

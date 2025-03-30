@@ -1,11 +1,11 @@
 import pickle
 
-with open("/Users/haochengyang/Desktop/research/CTPD/MMMSPG-014C/EHR_dataset/mimiciii_benchmark/output_mimic3/ihm/test_p2x_data.pkl", "rb") as f:
+with open("/Users/haochengyang/Desktop/research/CTPD/MMMSPG-014C/EHR_dataset/mimiciii_benchmark/output_mimic3/pheno/val_p2x_data.pkl", "rb") as f:
     data = pickle.load(f)
 
 #print(data[11]['text_data'][-5:])  # 检查 text_data
 print(data[20]['reg_ts'].shape)  # 检查 text_data
-print(data[20]['label'])  # 检查 text_data
+print(len(data[20]['label']))  # 检查 text_data
 
 # total_words = 0
 # total_text_count = 0
