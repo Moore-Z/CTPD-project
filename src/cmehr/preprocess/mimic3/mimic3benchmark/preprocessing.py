@@ -1,6 +1,6 @@
 import numpy as np
 import re
-
+import pandas as pd
 from pandas import DataFrame, Series
 
 from .util import dataframe_from_csv
@@ -76,9 +76,17 @@ def extract_diagnosis_labels(diagnoses):
     diagnoses['VALUE'] = 1
     labels = diagnoses[['ICUSTAY_ID', 'ICD9_CODE', 'VALUE']].drop_duplicates()\
         .pivot(index='ICUSTAY_ID', columns='ICD9_CODE', values='VALUE').fillna(0).astype(int)
-    for l in diagnosis_labels:
-        if l not in labels:
-            labels[l] = 0
+    # for l in diagnosis_labels:
+    #     if l not in labels:
+    #         labels[l] = 0
+    missing_labels = [l for l in diagnosis_labels if l not in labels]
+    if missing_labels:
+        # Create a DataFrame with zeros for all missing labels
+        missing_df = pd.DataFrame(0,
+                                  index=labels.index,
+                                  columns=missing_labels)
+        # Concatenate with the original labels DataFrame
+        labels = pd.concat([labels, missing_df], axis=1)
     labels = labels[diagnosis_labels]
     return labels.rename(dict(zip(diagnosis_labels, ['Diagnosis ' + d for d in diagnosis_labels])), axis=1)
 

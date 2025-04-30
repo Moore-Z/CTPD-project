@@ -11,6 +11,7 @@ LOS是完整的ICU住院时长
 """
 
 def process_partition(args, partition, sample_rate=1.0, shortest_length=4.0, eps=1e-6):
+    # Build and Make Directory
     output_dir = os.path.join(args.output_path, partition)
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
@@ -37,7 +38,9 @@ def process_partition(args, partition, sample_rate=1.0, shortest_length=4.0, eps
                     continue
 
                 ts_lines = tsfile.readlines()
+                # Header : names of categories
                 header = ts_lines[0]
+                # TS : values of these categories
                 ts_lines = ts_lines[1:]
                 event_times = [float(line.split(',')[0]) for line in ts_lines]
 
@@ -50,11 +53,26 @@ def process_partition(args, partition, sample_rate=1.0, shortest_length=4.0, eps
                 if len(ts_lines) == 0:
                     print("\n\t(no events in ICU) ", patient, ts_filename)
                     continue
-
+                """
+                Let's assume:
+                
+                los = 48.0 (Length of Stay: 48 hours)
+                
+                eps = 1e-6 (a very small number to avoid rounding errors)
+                
+                sample_rate = 1.0 (hourly samples)
+                
+                shortest_length = 4.0 (minimum 4 hours after admission)
+                
+                event_times = [1.5, 3.2, 7.8, 12.5, 24.3, 36.1] (when measurements were actually taken)
+                """
+                # Step 1: Create a regular time grid
                 sample_times = np.arange(0.0, los + eps, sample_rate)
 
+                # Step 2: Remove early timepoints
                 sample_times = list(filter(lambda x: x > shortest_length, sample_times))
 
+                # Step 3: Make sure we start after first measurement
                 # At least one measurement
                 sample_times = list(filter(lambda x: x > event_times[0], sample_times))
 

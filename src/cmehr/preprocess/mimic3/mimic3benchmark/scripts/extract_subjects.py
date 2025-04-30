@@ -1,4 +1,6 @@
 import argparse
+import os
+import numpy as np
 import yaml
 
 from mimic3benchmark.mimic3csv import *
