@@ -1,5 +1,5 @@
 import argparse
-from mimic3models import parse_utils
+import parse_utils
 import json
 import numpy as np
 

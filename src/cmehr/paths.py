@@ -1,4 +1,3 @@
-
 import os
 import argparse
 from pathlib import Path
@@ -7,13 +6,15 @@ from pathlib import Path
 ROOT_PATH = Path(__file__).parent.parent.parent
 # DATA_PATH = Path("/disk1/fywang/EHR_dataset")
 # DATA_PATH = Path("/data1/r10user2/EHR_dataset")
-DATA_PATH = Path("/Users/haochengyang/Desktop/Research/CTPD/MMMSPG-014C/EHR_dataset")
+DATA_PATH = Path("C:/Users/zhumo/Dataset/MIMIC3/EHR_data/mimiciii_benchmark/output_mimic3")
+DATA_PATH_EHR = Path("C:/Users/zhumo/Dataset/MIMIC3/EHR_data")
+DATA_PATH_EHR_OUTPUT = Path("C:/Users/zhumo/Dataset/MIMIC3/EHR_data/output_mimic3")
 
 # path for mimic iii dataset
 # only used for preprocessing benchmark dataset
-MIMIC3_BENCHMARK_PATH = DATA_PATH / "mimiciii_benchmark"
+MIMIC3_BENCHMARK_PATH = DATA_PATH_EHR / "mimiciii_benchmark"
 MIMIC3_RAW_PATH = DATA_PATH / "mimiciii"
-MIMIC3_IHM_PATH = MIMIC3_BENCHMARK_PATH / "in-hospital-mortality"
+MIMIC3_IHM_PATH = MIMIC3_BENCHMARK_PATH / "output_mimic3/ihm"
 MIMIC3_PHENO_PATH = MIMIC3_BENCHMARK_PATH / "phenotyping"
 MIMIC3_PHENO_24H_PATH = MIMIC3_BENCHMARK_PATH / "phenotyping_24h"
 

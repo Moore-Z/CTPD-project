@@ -202,6 +202,7 @@ class CTPDModule(MIMIC3LightningModule):
 
         # ============ 多层时序卷积模块 =============
         # 用于提取不同时间尺度的特征，三层不同膨胀率的卷积
+        # [B,D,T_ref]
         self.ts_conv_1 = ConvBlock(
                 self.embed_dim,     # 输入维度
                 self.embed_dim,     # 输出维度
@@ -244,6 +245,7 @@ class CTPDModule(MIMIC3LightningModule):
         self.time_query = torch.linspace(0, 1., self.tt_max)  # [tt_max]
 
         # ============ 多时间注意力 mTAND 模块 =============
+        # https://mp.weixin.qq.com/s/BWffVjnapdBgtxbXNwITsA
         # 用于不规则时间序列的时间对齐
         self.time_attn_ts = multiTimeAttention(
             self.orig_d_ts*2,  # 输入维度(包含值和掩码)
@@ -551,6 +553,10 @@ class CTPDModule(MIMIC3LightningModule):
         proj_x_ts = self.gate_ts(proj_x_ts_irg, proj_x_ts_reg)  # [T_ref,B,D]
         
         # 调整维度从[T,B,D]到[B,D,T]以适应后续卷积操作
+        # This code is using the einops library, which provides a very clean and
+        # readable way to rearrange tensor dimensions.
+        # This line changes the shape of your tensor from [T, B, D] to [B, D, T],
+        # which is the format expected by 1D convolution layers (nn.Conv1d) in PyTorch.
         proj_x_ts = rearrange(proj_x_ts, "tt b d -> b d tt")  # [B,D,T_ref]
         
         # 1.4 处理文本序列，对齐到参考时间线
@@ -728,11 +734,11 @@ class CTPDModule(MIMIC3LightningModule):
         else:
             num_ts_tokens = concat_ts_feat.size(1)  # sum(T_i)
         
-        # 分别对两种模态的特征进行平均池化
+        # 分别对两种模态的特征进行平均池化 (Attention Pooling)
         last_ts_feat = torch.mean(fusion_feat[:, :num_ts_tokens, :], dim=1)  # [B,D]
         last_text_feat = torch.mean(fusion_feat[:, num_ts_tokens:, :], dim=1)  # [B,D]
         
-        # 拼接两种模态的特征
+        # 拼接两种模态的特征 (L_Pred)
         last_hs = torch.cat([last_ts_feat, last_text_feat], dim=1)  # [B,2D]
 
         # 生成最终预测
@@ -837,7 +843,7 @@ if __name__ == "__main__":
     from cmehr.dataset.mimic3_downstream_datamodule import MIMIC3DataModule
 
     datamodule = MIMIC3DataModule(
-        file_path=str("/Users/haochengyang/Desktop/research/CTPD/MMMSPG-014C/EHR_dataset/mimiciii_benchmark/output_mimic3/los"),
+        file_path=str("C:/Users/zhumo/Dataset/MIMIC3/EHR_data/mimiciii_benchmark/output_mimic3/ihm"),
         tt_max=24,
         bert_type="prajjwal1/bert-tiny",
         max_length=512

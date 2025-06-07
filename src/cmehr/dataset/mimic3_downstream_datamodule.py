@@ -3,6 +3,7 @@ from lightning.pytorch.utilities.types import TRAIN_DATALOADERS
 import numpy as np
 from typing import Optional
 import torch
+import os
 from torch.nn.utils.rnn import pad_sequence
 from lightning import LightningDataModule
 from transformers import AutoTokenizer
@@ -22,12 +23,23 @@ class TSNote_Irg(Dataset):
                  tt_max: int = 24, # 24 pheno时设为 24；48 ihm时设为 48
                  first_nrows: Optional[int] = None):
         super().__init__()
-
+        # 读取文件
         data_path = os.path.join(file_path, f"{split}_p2x_data.pkl")
-        with open(data_path, "rb") as f:
-            # data_path 是 pkl 文件路径，加载后 self.data 是一个 list，每个元素是 字典，对应一条样本
-            self.data = pickle.load(f)
-
+        print(f"Trying to load data from: {data_path}")
+        try:
+            with open(data_path, "rb") as f:
+                # data_path 是 pkl 文件路径，加载后 self.data 是一个 list，每个元素是 字典，对应一条样本
+                self.data = pickle.load(f)
+        except FileNotFoundError:
+            print(f"Error: Could not find file at {data_path}")
+            print(f"Current working directory: {os.getcwd()}")
+            print(f"Directory contents of {file_path}:")
+            try:
+                print(os.listdir(file_path))
+            except Exception as e:
+                print(f"Could not list directory contents: {e}")
+            raise
+        #
         if split == "train":
             self.notes_order = nodes_order
         else:
@@ -72,17 +84,20 @@ class TSNote_Irg(Dataset):
         # 获取不规则时间序列的掩码 ts_mask，形状为 (T_i, 17)
         ts_mask = data_detail['irg_ts_mask']
 
-        # only keep samples with both time series and text data
+        # text_data == Doctor Notes
         if 'text_data' not in data_detail:
             return None
         
         # 1. 处理文本数据 ------------------------------------------------------------
         text = data_detail['text_data']
 
+        # 没有数据
         if len(text) == 0:
             return None
 
+        # Tokenized text 的数据
         text_token = []
+        # 直接从Tokenized 后的数据里面提取
         atten_mask = []
         label = data_detail["label"]
         ts_tt = data_detail["ts_tt"]
@@ -92,6 +107,7 @@ class TSNote_Irg(Dataset):
 
         if 'Text' in self.modeltype:
             for t in text:
+                # Tokenize
                 inputs = self.tokenizer.encode_plus(t,
                                                     padding="max_length",
                                                     max_length=self.max_len,
@@ -107,8 +123,10 @@ class TSNote_Irg(Dataset):
                 }
 
                 """
+                # input 什么格式在上面
                 text_token.append(torch.tensor(
                     inputs['input_ids'], dtype=torch.long))
+                # Mask
                 attention_mask = inputs['attention_mask']
                 if "Longformer" in self.bert_type:
                     attention_mask[0] += 1  # type: ignore
@@ -124,7 +142,7 @@ class TSNote_Irg(Dataset):
         reg_ts = torch.tensor(reg_ts, dtype=torch.float)
         ts = torch.tensor(ts, dtype=torch.float)
         ts_mask = torch.tensor(ts_mask, dtype=torch.long)
-        # 将 ts_tt 转换为浮点数，并归一化到 [0, 1] 范围
+        # Normalization， 用最大的除， iterate 整个list
         ts_tt = torch.tensor([t/self.tt_max for t in ts_tt], dtype=torch.float)
         # 将 text_time 转换为浮点数，并归一化到 [0, 1] 范围
         text_time = [t/self.tt_max for t in text_time]
@@ -221,10 +239,8 @@ class MIMIC3DataModule(LightningDataModule):
                  batch_size: int = 4,
                  num_workers: int = 1,
                  modeltype: str = "TS_Text",
-                 file_path: str = str(ROOT_PATH / "output/ihm"),
-                #  bert_type: str = "yikuan8/Clinical-Longformer",
+                 file_path: str = str(MIMIC3_IHM_PATH),
                  bert_type: str = "prajjwal1/bert-tiny",
-                #  max_length: int = 1024,
                  max_length: int = 512, 
                  tt_max: int = 48,
                  first_nrows: Optional[int] = None
@@ -294,27 +310,27 @@ class MIMIC3DataModule(LightningDataModule):
 
 if __name__ == "__main__":
     dataset = TSNote_Irg(
-        file_path=str(DATA_PATH / "mimiciii_benchmark/output_mimic3/pheno"),
+        file_path=str(DATA_PATH_EHR / "mimiciii_benchmark/output_mimic3/pheno"),
         split="train",
         bert_type="yikuan8/Clinical-Longformer",
         max_length=1024,
         modeltype="TS_Text",
         tt_max=48,
     )
-    print(dataset[5])
+    # print(dataset[5])
     print(dataset[5]['reg_ts'].shape)
     print(dataset[6]['reg_ts'].shape)
     print(dataset[7]['reg_ts'].shape)
     print(dataset[8]['label'].shape)
-    # datamodule = MIMIC3DataModule(
-    #     file_path=str(DATA_PATH / "mimiciii_benchmark/output_mimic3/pheno"),
-    # )
-    # batch = dict()
-    # for batch in datamodule.val_dataloader():
-    #     if batch is not None:
-    #         break
-    # for k, v in batch.items():
-    #     print(f"{k}: ", v.shape)
+    datamodule = MIMIC3DataModule(
+        file_path=str(MIMIC3_IHM_PATH),
+    )
+    batch = dict()
+    for batch in datamodule.val_dataloader():
+        if batch is not None:
+            break
+    for k, v in batch.items():
+        print(f"{k}: ", v.shape)
     """
     ts: torch.Size([4, 157, 17])
     ts_mask:  torch.Size([4, 157, 17])

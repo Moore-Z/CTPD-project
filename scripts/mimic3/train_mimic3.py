@@ -32,14 +32,14 @@ parser = ArgumentParser(description="PyTorch Lightning EHR Model")
 # 设置任务类型，可选ihm(院内死亡预测)、decomp(病情恶化预测)、los(住院时长预测)、pheno(表型识别)、readm(再入院预测)
 parser.add_argument("--task", type=str, default="pheno",
                     choices=["ihm", "decomp", "los", "pheno", "readm"])
-parser.add_argument("--batch_size", type=int, default=128)  # 批次大小
+parser.add_argument("--batch_size", type=int, default=32)  # 批次大小
 parser.add_argument("--num_workers", type=int, default=4)   # 数据加载的工作进程数
 parser.add_argument("--update_counts", type=int, default=3) # 更新次数
 parser.add_argument("--max_epochs", type=int, default=50)   # 最大训练轮数
-parser.add_argument("--update_encoder_epochs", type=int, default=2) # 编码器更新的轮数
+parser.add_argument("--update_encoder_epochs", type=int, default=8) # 编码器更新的轮数
 parser.add_argument("--devices", type=int, default=1)       # 使用的GPU数量
 parser.add_argument("--max_length", type=int, default=1024) # 序列最大长度
-parser.add_argument("--accumulate_grad_batches", type=int, default=1) # 梯度累积的批次数
+parser.add_argument("--accumulate_grad_batches", type=int, default=4) # 梯度累积的批次数
 parser.add_argument("--first_nrows", type=int, default=-1)  # 用于调试时限制数据量
 # 选择要使用的模型
 parser.add_argument("--model_name", type=str, default="ctpd",
@@ -107,7 +107,7 @@ def cli_main():
 
         # 初始化数据模块
         dm = MIMIC3DataModule(
-            file_path=str(DATA_PATH / "mimiciii_benchmark" / f"output_mimic3/{args.task}"),
+            file_path=str(MIMIC3_IHM_PATH),
             tt_max=args.period_length,
             batch_size=args.batch_size,
             modeltype="TS_Text",
@@ -185,7 +185,6 @@ def cli_main():
                     args.ckpt_path, **vars(args))
             else:
                 model = CTPDModule(**vars(args))
-        
         elif args.model_name == "copula":
             if args.ckpt_path:
                 model = CopulaModule.load_from_checkpoint(

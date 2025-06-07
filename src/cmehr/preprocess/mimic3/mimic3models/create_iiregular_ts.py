@@ -193,12 +193,7 @@ class Discretizer_multi(Discretizer):
         return (data, new_header)
 
 
-def save_data(reader: Reader,
-              discretizer: Discretizer_multi,
-              outputdir: str,
-              small_part: bool,
-              mode: str,
-              non_mask=None):
+def save_data(reader: Reader, discretizer: Discretizer_multi, outputdir: str, small_part: bool, mode: str, non_mask=None):
 
     N = reader.get_number_of_examples()
     if small_part:
@@ -413,7 +408,7 @@ def create_irregular_ts():
             "y": y,         # LOS 标签(float类型)
             "header": header,
             "name": name
-        }
+        }68627
         """
         # 调用 LengthOfStayReader
         # 路径里你可以把数据放在  {args.dataset_dir}/train, {args.dataset_dir}/test
@@ -516,10 +511,10 @@ def create_irregular_ts():
 
     print("Step 5: Load Text data")
 
-    train_textdata_fixed = MIMIC3_BENCHMARK_PATH / "root/train_text_fixed"
-    train_starttime_path = MIMIC3_BENCHMARK_PATH / "root/train_text_fixed/train_starttime.pkl"
-    test_textdata_fixed = MIMIC3_BENCHMARK_PATH / "root/test_text_fixed"
-    test_starttime_path = MIMIC3_BENCHMARK_PATH / "root/test_text_fixed/test_starttime.pkl"
+    train_textdata_fixed = DATA_PATH / "train_text_fixed"
+    train_starttime_path = DATA_PATH / "train_text_fixed/train_starttime.pkl"
+    test_textdata_fixed = DATA_PATH / "test_text_fixed"
+    test_starttime_path = DATA_PATH / "test_text_fixed/test_starttime.pkl"
 
     for mode in ['train', 'val', 'test']:
         with open(os.path.join(output_dir, f"norm_ts_{mode}.pkl"), 'rb') as f:

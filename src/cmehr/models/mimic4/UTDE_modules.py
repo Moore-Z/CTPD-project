@@ -74,21 +74,41 @@ class multiTimeAttention(nn.Module):
 
     def attention(self, query, key, value, mask=None, dropout=None):
         "Compute 'Scaled Dot Product Attention'"
-
+        # Value
         dim = value.size(-1)
+        # Query
+        # d_k = query.size(-1)  →  this gives the integer value of d_k
+        # For exmaple: query.shape = [2, 4, 128, 64]  # then d_k = 64
+        # d_k = 64
+        # math.sqrt(d_k) = 8.0
+        # scores = torch.matmul(query, key.transpose(-2, -1)) / 8.0
         d_k = query.size(-1)
-        scores = torch.matmul(query, key.transpose(-2, -1)) \
-            / math.sqrt(d_k)
+        # dim = value vector size = input_dim
+        # d_k = key/query vector size = embed_time_k = embed_time / num_heads
+        scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
+        # [scores]: [batch, heads, seq_len_q, seq_len_k] → [batch, heads, seq_len_q, seq_len_k, 1]
+        # repeat_interleave(dim, dim=-1) → shape = [batch, heads, seq_len_q, seq_len_k, dim]
         scores = scores.unsqueeze(-1).repeat_interleave(dim, dim=-1)
         if mask is not None:
             if len(mask.shape) == 3:
                 mask = mask.unsqueeze(-1)
 
             scores = scores.masked_fill(mask.unsqueeze(-3) == 0, -10000)
+        # You apply softmax per output dimension (dim), per query position, per head, per batch
         p_attn = F.softmax(scores, dim=-2)
         if dropout is not None:
+            # This is PyTorch's functional form of dropout, which randomly zeroes out
+            # some elements of the input tensor with probability
+            # Ensures dropout is only applied during training.
+            # In evaluation mode (self.training=False), dropout does nothing
             p_attn = F.dropout(p_attn, p=dropout, training=self.training)
-
+        # This demonstrates elementwise multiplication + broadcasting + sum — the core of attention output.
+        # p_attn 5D matrix , with extral header and query
+        # Yes — you're absolutely right:
+        #
+        # The sum only happens along dim=-2, which is the key dimension (index 3 in [batch, head, query, key, dim])
+        # But we are not summing everything in the tensor — we’re summing along the key axis, and
+        # the result is still a vector along the dim dimension.
         return torch.sum(p_attn*value.unsqueeze(-3), -2), p_attn
 
     def forward(self, query, key, value, mask=None, dropout=0.1):
@@ -98,12 +118,18 @@ class multiTimeAttention(nn.Module):
         if mask is not None:
             # Same mask applied to all h heads.
             mask = mask.unsqueeze(1)
-        value = value.unsqueeze(1)
+        # PyTorch’s unsqueeze(dim) adds a new axis at the given position.
+
+        # This is done to prepare value for broadcasting across attention heads.
+        value = value.unsqueeze(1) # Shape: [batch, 1, seq_len, input_dim]
+
         query, key = [l(x).view(x.size(0), -1, self.h, self.embed_time_k).transpose(1, 2)
                       for l, x in zip(self.linears, (query, key))]
         x, _ = self.attention(query, key, value, mask, dropout)
-        x = x.transpose(1, 2).contiguous() \
-             .view(batch, -1, self.h * dim)
+        # Combine all headers' * dim value
+        x = x.transpose(1, 2).contiguous().view(batch, -1, self.h * dim)
+        # self.linears 最后的那个value 的, x -> [batch, seq_len, heads × dim]
+        # x -> [batch, seq_len, nhidden]
         x = self.linears[-1](x)
 
         # x[0, 0]
@@ -111,6 +137,10 @@ class multiTimeAttention(nn.Module):
         # x[0, 0] * self.linears[-1].weight.t()[:, 0]
         if torch.isnan(x).any():
             ipdb.set_trace()
+        # This checks if any NaNs (Not-a-Number) appear in the output.
+        # If they do:
+        # It launches the interactive debugger ipdb
+        # You can inspect shapes, values, etc., in-place
 
         return x
 
@@ -149,6 +179,8 @@ class BertForRepresentation(nn.Module):
 
     def forward(self, input_ids_sequence, attention_mask_sequence, sent_idx_list=None, doc_idx_list=None):
         txt_arr = []
+        # input_ids_sequence: a list of tokenized sentences/documents (each item is a tensor [seq_len])
+        # attention_mask_sequence: a list of attention masks aligned with the input_ids
         for input_ids, attention_mask in zip(input_ids_sequence, attention_mask_sequence):
             if 'Longformer' in self.model_name:
                 global_attention_mask = torch.clamp(
